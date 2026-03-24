@@ -4,7 +4,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import Select from "@/components/form/Select";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { apiDevices, apiGallery, apiPersons } from "@/lib";
 import { toast } from "react-toastify";
 
@@ -16,21 +16,38 @@ interface AddDeviceModalProps {
   existingDevice?: any;
 }
 
+const EMPTY_FORM = {
+  type: "",
+  label: "",
+  owned: "",
+  barcode: "",
+  assignedTo: "",
+  gallery: "",
+};
+
 export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode = false, existingDevice }: AddDeviceModalProps) {
-  const [form, setForm] = useState({
-    type: "",
-    label: "",
-    owned: "",
-    barcode: "",
-    assignedTo: "",
-    gallery: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [persons, setPersons] = useState<{ label: string; value: string; id: number }[]>([]);
   const [galleryOptions, setGalleryOptions] = useState<{ label: string; value: string; id: number }[]>([]);
 
   const helmetLabels = ["Helmet Alpha", "Helmet Beta", "Helmet Gamma"].map(l => ({ label: l, value: l }));
   const hotspotLabels = ["Hotspot A1", "Hotspot B2", "Hotspot C3"].map(l => ({ label: l, value: l }));
+
+  useEffect(() => {
+    if (!open) {
+      setForm(EMPTY_FORM);
+      setPersons([]);
+      setGalleryOptions([]);
+      setIsSaving(false);
+      return;
+    }
+
+    if (!editMode) {
+      setForm(EMPTY_FORM);
+    }
+  }, [open, editMode]);
 
   // Populate form if editing
   useEffect(() => {
@@ -83,37 +100,77 @@ export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode 
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const validateForm = () => {
+    if (!form.type) {
+      toast.warn("Please select a device type.");
+      return false;
+    }
+
+    if (!form.label.trim()) {
+      toast.warn("Please select a device label.");
+      return false;
+    }
+
+    if (!form.barcode.trim()) {
+      toast.warn("Please enter a barcode.");
+      return false;
+    }
+
+    if (form.type === "Hotspot" && !form.gallery) {
+      toast.warn("Please select a gallery for the hotspot.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSave = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+
+    if (!validateForm() || isSaving) {
+      return;
+    }
+
+    const owned =
+      form.type === "Helmet"
+        ? persons.find((person) => person.value === form.assignedTo)?.label ?? "Unassigned"
+        : galleryOptions.find((gallery) => gallery.value === form.gallery)?.label ?? "Unassigned";
+
+    const payload = {
+      label: form.label.trim(),
+      type: form.type,
+      barcode: form.barcode.trim(),
+      owned,
+      isOn: true,
+    };
+
+    setIsSaving(true);
+
     try {
       if (editMode) {
-        await apiDevices.put(`/devices/${existingDevice.id}`, {
-          label: form.label,
-          type: form.type,
-          barcode: form.barcode,
-          owned: form.type === "Helmet"
-            ? persons.find(p => p.value === form.assignedTo)?.label ?? ""
-            : galleryOptions.find(g => g.value === form.gallery)?.label ?? "",
-          isOn: true,
-        });
+        await apiDevices.put(`/devices/${existingDevice.id}`, payload);
         toast.success("Device updated successfully!");
       } else {
-        await apiDevices.post("/devices", {
-          label: form.label,
-          type: form.type,
-          barcode: form.barcode,
-          owned: form.type === "Helmet"
-            ? persons.find(p => p.value === form.assignedTo)?.label ?? ""
-            : galleryOptions.find(g => g.value === form.gallery)?.label ?? "",
-          isOn: true,
-        });
+        const { data: savedDevice } = await apiDevices.post("/devices", payload);
+
+        if (form.type === "Helmet" && form.assignedTo) {
+          await apiDevices.post("/person-device", {
+            personId: Number(form.assignedTo),
+            deviceId: savedDevice.id,
+            assignedAt: new Date().toISOString(),
+          });
+        }
+
         toast.success("Device added successfully!");
       }
-  
+
       onDeviceAdded();
       onClose();
     } catch (err) {
       toast.error("Failed to save device");
       console.error(err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -137,7 +194,7 @@ export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode 
             {editMode ? "Edit Device" : "Add New Device"}
           </h4>
         </div>
-        <form className="flex flex-col">
+        <form className="flex flex-col" onSubmit={handleSave}>
           <div className="custom-scrollbar h-[400px] overflow-y-auto px-2 pb-3">
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
               <div><Label>Type</Label>
@@ -161,7 +218,7 @@ export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode 
                   <div><Label>Barcode</Label><Input type="text" value={form.barcode} onChange={(e) => update("barcode", e.target.value)} /></div>
                   {editMode && (
                     <div className="col-span-2">
-                      <Button variant="outline" onClick={handleDetachHotspot}>Detach Hotspot</Button>
+                      <Button type="button" variant="outline" onClick={handleDetachHotspot}>Detach Hotspot</Button>
                     </div>
                   )}
                 </>
@@ -169,8 +226,8 @@ export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode 
             </div>
           </div>
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave}>{editMode ? "Save Changes" : "Add Device"}</Button>
+            <Button type="button" size="sm" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+            <Button type="submit" size="sm" disabled={isSaving}>{isSaving ? "Saving..." : editMode ? "Save Changes" : "Add Device"}</Button>
           </div>
         </form>
       </div>

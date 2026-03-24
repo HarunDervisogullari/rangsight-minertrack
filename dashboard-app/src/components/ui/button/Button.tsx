@@ -12,6 +12,7 @@ const Button: React.FC<ButtonProps> = ({
   children,
   size = "md",
   variant = "primary",
+  type = "button",
   startIcon,
   endIcon,
   className = "",
@@ -35,6 +36,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       {...props}
+      type={type}
       className={`inline-flex items-center justify-center font-medium gap-2 rounded-lg transition ${className} ${
         sizeClasses[size]
       } ${variantClasses[variant]} ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
