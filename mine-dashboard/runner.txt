@@ -1,0 +1,2 @@
+python data-ingestion/ingest_simulation.py
+python mqtt-simulator/simulator.py

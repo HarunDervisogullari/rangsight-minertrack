@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Backend FastAPI Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mine-dashboard-backend
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_HOST=ransight-redis-1  # Connect to Redis container
+      - REDIS_PORT=6379
+      - INFLUXDB_URL=http://ransight-influxdb-1:8086  # Connect to InfluxDB container
+      - INFLUXDB_BUCKET=helmet_data
+      - INFLUXDB_ORG=RansightOrg
+      - INFLUXDB_TOKEN=dEJu65igZZulaC5s_AU1QDP5TaAJjcvFDUezECxpyq96wKb1TlBSb3GOlQEFx--r59yPDLpZ4J82ZwZJytlzDw==
+      - PG_DBNAME=ransight
+      - PG_USER=postgres
+      - PG_PASSWORD=admin
+      - PG_HOST=ransight-postgres-1  # Connect to PostgreSQL container
+      - PG_PORT=5432
+    networks:
+      - ransight_default
+    restart: unless-stopped
+
+  # Data Ingestion Service
+  data-ingestion:
+    build:
+      context: ./data-ingestion
+      dockerfile: Dockerfile
+    container_name: mine-dashboard-ingestion
+    environment:
+      - REDIS_HOST=ransight-redis-1  # Connect to Redis container
+      - REDIS_PORT=6379
+      - INFLUXDB_URL=http://ransight-influxdb-1:8086  # Connect to InfluxDB container
+      - INFLUXDB_BUCKET=helmet_data
+      - INFLUXDB_ORG=RansightOrg
+      - INFLUXDB_TOKEN=dEJu65igZZulaC5s_AU1QDP5TaAJjcvFDUezECxpyq96wKb1TlBSb3GOlQEFx--r59yPDLpZ4J82ZwZJytlzDw==
+      - MQTT_BROKER_HOST=ransight-mqtt-1  # Connect to Mosquitto container
+      - MQTT_BROKER_PORT=1883
+      - MQTT_TOPIC=mine/gallery/raw
+      - PG_DBNAME=ransight
+      - PG_USER=postgres
+      - PG_PASSWORD=admin
+      - PG_HOST=ransight-postgres-1  # Connect to PostgreSQL container
+      - PG_PORT=5432
+    networks:
+      - ransight_default
+    restart: unless-stopped
+
+  # MQTT Simulator Service
+  mqtt-simulator:
+    build:
+      context: ./mqtt-simulator
+      dockerfile: Dockerfile
+    container_name: mine-dashboard-mqtt-simulator
+    environment:
+      - MQTT_BROKER_HOST=ransight-mqtt-1  # Connect to Mosquitto container
+      - MQTT_BROKER_PORT=1883
+    networks:
+      - ransight_default
+    restart: unless-stopped
+
+networks:
+  ransight_default:
+    external: true 

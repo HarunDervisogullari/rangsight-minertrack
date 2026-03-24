@@ -1,0 +1,266 @@
+version: "3.8"
+
+services:
+  # Database
+  postgres:
+    image: postgres:15
+    container_name: ransight-postgres
+    environment:
+      POSTGRES_DB: ransight
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ransight-network
+
+  # Cache & Message Broker
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - ransight-network
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+    networks:
+      - ransight-network
+
+  # Time Series Database
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=my-user
+      - DOCKER_INFLUXDB_INIT_PASSWORD=my-password
+      - DOCKER_INFLUXDB_INIT_ORG=RansightOrg
+      - DOCKER_INFLUXDB_INIT_BUCKET=helmet_data
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=dEJu65igZZulaC5s_AU1QDP5TaAJjcvFDUezECxpyq96wKb1TlBSb3GOlQEFx--r59yPDLpZ4J82ZwZJytlzDw==
+    restart: unless-stopped
+    networks:
+      - ransight-network
+
+  # Backend Services
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=ransight
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    command: python manage.py runserver 0.0.0.0:8000
+    networks:
+      - ransight-network
+
+  device-service:
+    build:
+      context: ./device-service
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ransight
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_SHOW_SQL=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ransight-network
+
+  gallery-service:
+    build:
+      context: ./gallery-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ransight
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_SHOW_SQL=true
+      - SERVER_PORT=8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ransight-network
+
+  person-service:
+    build:
+      context: ./person-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ransight
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_SHOW_SQL=true
+      - SERVER_PORT=8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ransight-network
+
+  # Mine Dashboard FastAPI Backend
+  mine-dashboard-backend:
+    build:
+      context: ./mine-dashboard/backend
+      dockerfile: Dockerfile
+    container_name: ransight-mine-backend
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_BUCKET=helmet_data
+      - INFLUXDB_ORG=RansightOrg
+      - INFLUXDB_TOKEN=dEJu65igZZulaC5s_AU1QDP5TaAJjcvFDUezECxpyq96wKb1TlBSb3GOlQEFx--r59yPDLpZ4J82ZwZJytlzDw==
+      - PG_DBNAME=ransight
+      - PG_USER=postgres
+      - PG_PASSWORD=admin
+      - PG_HOST=postgres
+      - PG_PORT=5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      influxdb:
+        condition: service_started
+    networks:
+      - ransight-network
+    restart: unless-stopped
+
+  # Data Ingestion Service
+  data-ingestion:
+    build:
+      context: ./mine-dashboard/data-ingestion
+      dockerfile: Dockerfile
+    container_name: ransight-data-ingestion
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_BUCKET=helmet_data
+      - INFLUXDB_ORG=RansightOrg
+      - INFLUXDB_TOKEN=dEJu65igZZulaC5s_AU1QDP5TaAJjcvFDUezECxpyq96wKb1TlBSb3GOlQEFx--r59yPDLpZ4J82ZwZJytlzDw==
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - MQTT_TOPIC=mine/gallery/raw
+      - PG_DBNAME=ransight
+      - PG_USER=postgres
+      - PG_PASSWORD=admin
+      - PG_HOST=postgres
+      - PG_PORT=5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      influxdb:
+        condition: service_started
+      mqtt:
+        condition: service_started
+    networks:
+      - ransight-network
+    restart: unless-stopped
+
+  # Next.js Dashboard Frontend
+  dashboard-frontend:
+    build:
+      context: ./dashboard-app
+      dockerfile: Dockerfile
+    container_name: ransight-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_AUTH_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_DEVICE_URL=http://localhost:8080
+      - NEXT_PUBLIC_API_GALLERY_URL=http://localhost:8081
+      - NEXT_PUBLIC_API_PERSON_URL=http://localhost:8082
+      - NEXT_PUBLIC_API_MINE_URL=http://localhost:8001
+      - NEXT_PUBLIC_MQTT_WS_URL=ws://localhost:9001
+    depends_on:
+      - auth-service
+      - device-service
+      - gallery-service
+      - person-service
+      - mine-dashboard-backend
+    networks:
+      - ransight-network
+    restart: unless-stopped
+
+  # MQTT Simulator Service
+  mqtt-simulator:
+    build:
+      context: ./mine-dashboard/mqtt-simulator
+      dockerfile: Dockerfile
+    container_name: ransight-mqtt-simulator
+    environment:
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - MQTT_TOPIC=mine/gallery/raw
+    depends_on:
+      - mqtt
+    networks:
+      - ransight-network
+    restart: unless-stopped
+
+networks:
+  ransight-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  influxdb-data:
