@@ -7,6 +7,7 @@ import Select from "@/components/form/Select";
 import { FormEvent, useEffect, useState } from "react";
 import { apiDevices, apiGallery, apiPersons } from "@/lib";
 import { toast } from "react-toastify";
+import axios from "axios";
 
 interface AddDeviceModalProps {
   open: boolean;
@@ -23,6 +24,16 @@ const EMPTY_FORM = {
   barcode: "",
   assignedTo: "",
   gallery: "",
+};
+
+const toLocalDateTimeString = (date: Date) => {
+  const pad = (value: number) => value.toString().padStart(2, "0");
+
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("-") + `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
 
 export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode = false, existingDevice }: AddDeviceModalProps) {
@@ -154,11 +165,19 @@ export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode 
         const { data: savedDevice } = await apiDevices.post("/devices", payload);
 
         if (form.type === "Helmet" && form.assignedTo) {
-          await apiDevices.post("/person-device", {
-            personId: Number(form.assignedTo),
-            deviceId: savedDevice.id,
-            assignedAt: new Date().toISOString(),
-          });
+          try {
+            await apiDevices.post("/person-device", {
+              personId: Number(form.assignedTo),
+              deviceId: savedDevice.id,
+              assignedAt: toLocalDateTimeString(new Date()),
+            });
+          } catch (assignmentError) {
+            console.error("Helmet assignment failed after device creation", assignmentError);
+            toast.warn("Device was created, but assigning it to the person failed.");
+            onDeviceAdded();
+            onClose();
+            return;
+          }
         }
 
         toast.success("Device added successfully!");
@@ -167,7 +186,13 @@ export default function AddDeviceModal({ open, onClose, onDeviceAdded, editMode 
       onDeviceAdded();
       onClose();
     } catch (err) {
-      toast.error("Failed to save device");
+      const errorMessage = axios.isAxiosError(err)
+        ? err.response?.data?.message || err.response?.data?.error || err.response?.data || err.message
+        : err instanceof Error
+          ? err.message
+          : "Failed to save device";
+
+      toast.error(typeof errorMessage === "string" ? errorMessage : "Failed to save device");
       console.error(err);
     } finally {
       setIsSaving(false);
