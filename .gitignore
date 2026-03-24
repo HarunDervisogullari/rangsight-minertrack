@@ -64,3 +64,5 @@ influxdb-data/
 # Logs
 logs/
 *.log
+
+!dashboard-app/src/lib
