@@ -5,9 +5,7 @@ import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import Select from "@/components/form/Select";
 import { useEffect, useState } from "react";
-import apiDevices from "@/lib/axiosDevices";
-import apiPersons from "@/lib/axiosPersons";
-import apiGalleries from "@/lib/axiosGallery";
+import { apiDevices, apiGalleries, apiPersons } from "@/lib";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
 

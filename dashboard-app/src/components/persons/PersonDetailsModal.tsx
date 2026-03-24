@@ -6,7 +6,7 @@ import Button from "@/components/ui/button/Button";
 import Select from "@/components/form/Select";
 import PhoneInput from "@/components/form/group-input/PhoneInput";
 import { useEffect, useState } from "react";
-import api from "@/lib/axiosPersons";
+import { apiPersons as api } from "@/lib";
 import { toast } from "react-toastify";
 
 interface Option {

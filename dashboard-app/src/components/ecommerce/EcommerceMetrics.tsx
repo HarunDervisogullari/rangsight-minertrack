@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card"; // Adjust import if needed
-import apiGalleries from "@/lib/axiosGallery";
+import { apiGalleries } from "@/lib";
 
 interface Metrics {
   oxygen: number;

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
-import apiGalleries from "@/lib/axiosGallery";
+import { apiGalleries } from "@/lib";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,

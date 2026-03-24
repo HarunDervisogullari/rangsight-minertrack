@@ -4,7 +4,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { useState, useEffect } from "react";
-import api from "@/lib/axiosPersons";
+import { apiPersons as api } from "@/lib";
 import PhoneInput from "@/components/form/group-input/PhoneInput";
 import Select from "@/components/form/Select";
 

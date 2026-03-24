@@ -9,7 +9,7 @@ import {
 import Badge from "../ui/badge/Badge";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import api from "@/lib/axiosPersons";
+import { apiPersons as api } from "@/lib";
 
 interface Person {
   id: number;

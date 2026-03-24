@@ -6,8 +6,7 @@ import type { GalleryAssignment } from "@/types/gallery";
 import { GalleryZone } from "@/constants/galleryZones";
 import { toast } from "react-toastify";
 import Image from "next/image";
-import apiGalleries from "@/lib/axiosGallery";
-import apiDevices from "@/lib/axiosDevices";
+import { apiDevices, apiGalleries } from "@/lib";
 
 // Interface for devices displayed on the map
 interface DisplayableDevice {

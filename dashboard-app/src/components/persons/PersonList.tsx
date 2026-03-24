@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Button from "@/components/ui/button/Button";
 import AddPersonModal from "./AddPersonModal";
 import PersonDetailsModal from "./PersonDetailsModal";
-import api from "@/lib/axiosPersons";
+import { apiPersons as api } from "@/lib";
 
 type Person = {
   id: number;

@@ -6,7 +6,7 @@ import MineMap from "@/components/map/MineMap";
 import AddGalleryModal from "@/components/map/AddGalleryModal";
 import { GalleryZone } from "@/constants/galleryZones";
 import { toast } from "react-toastify";
-import apiGalleries from "@/lib/axiosGallery";
+import { apiGalleries } from "@/lib";
 
 export default function MapPageClient() {
 

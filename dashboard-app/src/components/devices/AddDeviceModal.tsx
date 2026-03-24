@@ -5,9 +5,7 @@ import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import Select from "@/components/form/Select";
 import { useEffect, useState } from "react";
-import apiDevices from "@/lib/axiosDevices";
-import apiPersons from "@/lib/axiosPersons";
-import apiGallery from "@/lib/axiosGallery";
+import { apiDevices, apiGallery, apiPersons } from "@/lib";
 import { toast } from "react-toastify";
 
 interface AddDeviceModalProps {

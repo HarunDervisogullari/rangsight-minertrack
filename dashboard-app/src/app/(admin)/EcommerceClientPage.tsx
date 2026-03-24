@@ -8,7 +8,7 @@ import StatisticsChart from "@/components/ecommerce/StatisticsChart";
 import RecentOrders from "@/components/ecommerce/RecentOrders";
 import DemographicCard from "@/components/ecommerce/DemographicCard";
 import { Card, CardContent } from "@/components/ui/card";
-import apiGalleries from "@/lib/axiosGallery";
+import { apiGalleries } from "@/lib";
 
 type Gallery = {
   id: number;

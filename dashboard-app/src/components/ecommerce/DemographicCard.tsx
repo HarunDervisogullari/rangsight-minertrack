@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { GALLERY_ZONES, type GalleryZone } from "@/constants/galleryZones";
-import apiGalleries from "@/lib/axiosGallery";
+import { apiGalleries } from "@/lib";
 
 type ZoneWithDensity = GalleryZone & {
   name: string; // RAN-* name

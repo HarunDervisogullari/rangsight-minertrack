@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Button from "@/components/ui/button/Button";
 import AddDeviceModal from "./AddDeviceModal";
 import DeviceDetailsModal from "./DeviceDetailsModal";
-import api from "@/lib/axiosDevices";
+import { apiDevices as api } from "@/lib";
 
 type Device = {
   id: number;
