@@ -11,8 +11,16 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo "Frontend imaji temiz cache ile yeniden insa ediliyor..."
+docker compose build --no-cache dashboard-frontend
+
+if [ $? -ne 0 ]; then
+    echo "Frontend build sirasinda hata olustu."
+    exit 1
+fi
+
 echo "Konteynerler insa ediliyor ve baslatiliyor..."
-docker-compose up -d --build
+docker compose up -d --build
 
 if [ $? -ne 0 ]; then
     echo "Docker Compose baslatilirken hata olustu."

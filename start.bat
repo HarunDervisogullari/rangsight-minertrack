@@ -13,8 +13,17 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+echo Frontend imaji temiz cache ile yeniden insa ediliyor...
+docker compose build --no-cache dashboard-frontend
+
+if %errorlevel% neq 0 (
+    echo Frontend build sirasinda hata olustu.
+    pause
+    exit /b 1
+)
+
 echo Konteynerler insa ediliyor ve baslatiliyor...
-docker-compose up -d --build
+docker compose up -d --build
 
 if %errorlevel% neq 0 (
     echo Docker Compose baslatilirken hata olustu.

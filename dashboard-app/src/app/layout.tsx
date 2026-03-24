@@ -1,6 +1,5 @@
 import "@fontsource/outfit/latin.css";
 import "./globals.css";
-import "react-toastify/dist/ReactToastify.css";
 
 import AppProviders from "./providers";
 
